@@ -1,7 +1,7 @@
 from __future__ import print_function
 import os
 import glob
-import dlib
+#import dlib
 import torch
 import torch.nn as nn
 from enum import Enum
@@ -69,29 +69,29 @@ class FaceAlignment:
             torch.backends.cudnn.benchmark = True
 
         # Initialise the face detector
-        if self.use_cnn_face_detector:
-            path_to_detector = os.path.join(
-                base_path, "mmod_human_face_detector.dat")
-            if not os.path.isfile(path_to_detector):
-                print("Downloading the face detection CNN. Please wait...")
-
-                path_to_temp_detector = os.path.join(
-                    base_path, "mmod_human_face_detector.dat.download")
-                
-                if os.path.isfile(path_to_temp_detector):
-                    os.remove(os.path.join(path_to_temp_detector))
-
-                request_file.urlretrieve(
-                    "https://www.adrianbulat.com/downloads/dlib/mmod_human_face_detector.dat",
-                    os.path.join(path_to_temp_detector))
-
-                os.rename(os.path.join(path_to_temp_detector),os.path.join(path_to_temp_detector))
-
-            self.face_detector = dlib.cnn_face_detection_model_v1(
-                path_to_detector)
-
-        else:
-            self.face_detector = dlib.get_frontal_face_detector()
+        # if self.use_cnn_face_detector:
+        #     path_to_detector = os.path.join(
+        #         base_path, "mmod_human_face_detector.dat")
+        #     if not os.path.isfile(path_to_detector):
+        #         print("Downloading the face detection CNN. Please wait...")
+        #
+        #         path_to_temp_detector = os.path.join(
+        #             base_path, "mmod_human_face_detector.dat.download")
+        #
+        #         if os.path.isfile(path_to_temp_detector):
+        #             os.remove(os.path.join(path_to_temp_detector))
+        #
+        #         request_file.urlretrieve(
+        #             "https://www.adrianbulat.com/downloads/dlib/mmod_human_face_detector.dat",
+        #             os.path.join(path_to_temp_detector))
+        #
+        #         os.rename(os.path.join(path_to_temp_detector),os.path.join(path_to_temp_detector))
+        #
+        #     self.face_detector = dlib.cnn_face_detection_model_v1(
+        #         path_to_detector)
+        #
+        # else:
+        #     self.face_detector = dlib.get_frontal_face_detector()
 
         # Initialise the face alignemnt networks
         self.face_alignemnt_net = FAN(int(network_size))
@@ -104,7 +104,7 @@ class FaceAlignment:
         if not os.path.isfile(fan_path):
             print("Downloading the Face Alignment Network(FAN). Please wait...")
 
-            fan_temp_path = os.path.join(base_path,network_name+'.download')
+            fan_temp_path = os.path.join(base_path, network_name+'.download')
 
             if os.path.isfile(fan_temp_path):
                 os.remove(os.path.join(fan_temp_path))
@@ -113,7 +113,7 @@ class FaceAlignment:
                 "https://www.adrianbulat.com/downloads/python-fan/" +
                 network_name, os.path.join(fan_temp_path))
 
-            os.rename(os.path.join(fan_temp_path),os.path.join(fan_path))
+            os.rename(os.path.join(fan_temp_path), os.path.join(fan_path))
 
         fan_weights = torch.load(
             fan_path,
@@ -144,7 +144,7 @@ class FaceAlignment:
                     "https://www.adrianbulat.com/downloads/python-fan/depth.pth.tar",
                     os.path.join(depth_model_temp_path))
 
-                os.rename(os.path.join(depth_model_temp_path),os.path.join(depth_model_path))
+                os.rename(os.path.join(depth_model_temp_path), os.path.join(depth_model_path))
             
             depth_weights = torch.load(
                 depth_model_path,
@@ -159,17 +159,17 @@ class FaceAlignment:
                 self.depth_prediciton_net.cuda()
             self.depth_prediciton_net.eval()
 
-    def detect_faces(self, image):
-        """Run the dlib face detector over an image
-
-        Args:
-            image (``ndarray`` object or string): either the path to the image or an image previosly opened
-            on which face detection will be performed.
-
-        Returns:
-            Returns a list of detected faces
-        """
-        return self.face_detector(image, 1)
+    # def detect_faces(self, image):
+    #     """Run the dlib face detector over an image
+    #
+    #     Args:
+    #         image (``ndarray`` object or string): either the path to the image or an image previosly opened
+    #         on which face detection will be performed.
+    #
+    #     Returns:
+    #         Returns a list of detected faces
+    #     """
+    #     return self.face_detector(image, 1)
 
     def get_landmarks(self, input_image, all_faces=False):
         with torch.no_grad():
@@ -182,56 +182,58 @@ class FaceAlignment:
             else:
                 image = input_image
 
-            detected_faces = self.detect_faces(image)
-            if len(detected_faces) > 0:
-                landmarks = []
-                for i, d in enumerate(detected_faces):
-                    if i > 0 and not all_faces:
-                        break
-                    if self.use_cnn_face_detector:
-                        d = d.rect
+            #detected_faces = self.detect_faces(image)
+            # if len(detected_faces) > 0:
+            #     landmarks = []
+            #     for i, d in enumerate(detected_faces):
+            #         if i > 0 and not all_faces:
+            #             break
+            #         if self.use_cnn_face_detector:
+            #             d = d.rect
+            landmarks = []
+            fid = open("test.npy", "rb")
+            d = np.load(fid)
+            center = torch.FloatTensor(
+                [d[2] - (d[2] - d[0]) / 2.0, d[3] -
+                 (d[3] - d[1]) / 2.0])
+            center[1] = center[1] - (d[3] - d[1]) * 0.12
+            scale = (d[2] - d[0] +
+                     d[3] - d[1]) / 195.0
 
-                    center = torch.FloatTensor(
-                        [d.right() - (d.right() - d.left()) / 2.0, d.bottom() -
-                         (d.bottom() - d.top()) / 2.0])
-                    center[1] = center[1] - (d.bottom() - d.top()) * 0.12
-                    scale = (d.right() - d.left() +
-                             d.bottom() - d.top()) / 195.0
+            inp = crop(image, center, scale)
+            inp = torch.from_numpy(inp.transpose(
+                (2, 0, 1))).float().div(255.0).unsqueeze_(0)
 
-                    inp = crop(image, center, scale)
-                    inp = torch.from_numpy(inp.transpose(
-                        (2, 0, 1))).float().div(255.0).unsqueeze_(0)
+            if self.enable_cuda:
+                inp = inp.cuda()
 
-                    if self.enable_cuda:
-                        inp = inp.cuda()
+            out = self.face_alignemnt_net(inp)[-1].data.cpu()
+            if self.flip_input:
+                out += flip(self.face_alignemnt_net(flip(inp))
+                            [-1].data.cpu(), is_label=True)
 
-                    out = self.face_alignemnt_net(inp)[-1].data.cpu()
-                    if self.flip_input:
-                        out += flip(self.face_alignemnt_net(flip(inp))
-                                    [-1].data.cpu(), is_label=True)
+            pts, pts_img = get_preds_fromhm(out, center, scale)
+            pts, pts_img = pts.view(68, 2) * 4, pts_img.view(68, 2)
 
-                    pts, pts_img = get_preds_fromhm(out, center, scale)
-                    pts, pts_img = pts.view(68, 2) * 4, pts_img.view(68, 2)
+            if self.landmarks_type == LandmarksType._3D:
+                heatmaps = np.zeros((68, 256, 256))
+                for i in range(68):
+                    if pts[i, 0] > 0:
+                        heatmaps[i] = draw_gaussian(
+                            heatmaps[i], pts[i], 2)
+                heatmaps = torch.from_numpy(
+                    heatmaps).view(1, 68, 256, 256).float()
+                if self.enable_cuda:
+                    heatmaps = heatmaps.cuda()
+                depth_pred = self.depth_prediciton_net(
+                    torch.cat((inp, heatmaps), 1)).data.cpu().view(68, 1)
+                pts_img = torch.cat(
+                    (pts_img, depth_pred * (1.0 / (256.0 / (200.0 * scale)))), 1)
 
-                    if self.landmarks_type == LandmarksType._3D:
-                        heatmaps = np.zeros((68, 256, 256))
-                        for i in range(68):
-                            if pts[i, 0] > 0:
-                                heatmaps[i] = draw_gaussian(
-                                    heatmaps[i], pts[i], 2)
-                        heatmaps = torch.from_numpy(
-                            heatmaps).view(1, 68, 256, 256).float()
-                        if self.enable_cuda:
-                            heatmaps = heatmaps.cuda()
-                        depth_pred = self.depth_prediciton_net(
-                            torch.cat((inp, heatmaps), 1)).data.cpu().view(68, 1)
-                        pts_img = torch.cat(
-                            (pts_img, depth_pred * (1.0 / (256.0 / (200.0 * scale)))), 1)
-
-                    landmarks.append(pts_img.numpy())
-            else:
-                print("Warning: No faces were detected.")
-                return None
+            landmarks.append(pts_img.numpy())
+            # else:
+            #     print("Warning: No faces were detected.")
+            #     return None
 
             return landmarks
 
